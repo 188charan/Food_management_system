@@ -1,7 +1,7 @@
 import streamlit as st
 import mysql.connector
 from mysql.connector import Error
-import random
+#import random
 import pandas as pd
 
 # Function to check if a string contains only alphabetic characters
@@ -28,8 +28,8 @@ def is_valid_password(s):
     return len(s) >= 6
 
 # Function to generate a unique ID (integer within 5 digits)
-def generate_unique_id():
-    return random.randint(10000, 99999)
+#def generate_unique_id():
+#    return random.randint(10000, 99999)
 
 # Function to create a MySQL connection
 def create_connection():
