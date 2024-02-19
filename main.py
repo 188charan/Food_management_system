@@ -1,8 +1,19 @@
 import streamlit as st
 import mysql.connector
 from mysql.connector import Error
-#import random
 import pandas as pd
+import re
+
+def validate_alpha(input_str):
+    # Regular expression pattern to match only alphabets and spaces
+    pattern = r'^[a-zA-Z\s]+$'
+    
+    # Use re.match() to check if the input matches the pattern
+    if re.match(pattern, input_str):
+        return True
+    else:
+        return False
+    
 
 # Function to check if a string contains only alphabetic characters
 def is_alpha(s):
@@ -28,8 +39,8 @@ def is_valid_password(s):
     return len(s) >= 6
 
 # Function to generate a unique ID (integer within 5 digits)
-#def generate_unique_id():
-#    return random.randint(10000, 99999)
+def generate_unique_id():
+    return random.randint(10000, 99999)
 
 # Function to create a MySQL connection
 def create_connection():
@@ -53,7 +64,8 @@ def create_login_table(connection):
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS login (
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                name VARCHAR(255) NOT NULL,
+                fname VARCHAR(35) NOT NULL,
+                lname VARCHAR(35),
                 email VARCHAR(255) NOT NULL UNIQUE,
                 password VARCHAR(255) NOT NULL
             )
@@ -69,11 +81,15 @@ def create_donate_table(connection):
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS donate (
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                name VARCHAR(255) NOT NULL,
+                fname VARCHAR(35) NOT NULL,
+                lname VARCHAR(25) ,
                 food_type VARCHAR(20) NOT NULL,
                 food_name VARCHAR(20) NOT NULL,
                 quantity INT NOT NULL,
-                address VARCHAR(255) NOT NULL,
+                door_no VARCHAR(20) NOT NULL,
+                street VARCHAR(20) NOT NULL,
+                area VARCHAR(20) NOT NULL,
+                city VARCHAR(20) NOT NULL,
                 phone_number VARCHAR(10) NOT NULL
             )
         """)
@@ -90,7 +106,10 @@ def create_orders_table(connection):
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 donate_id INT,
                 quantity INT NOT NULL,
-                delivery_address VARCHAR(255) NOT NULL,
+                o_door_no VARCHAR(20) NOT NULL,
+                o_street VARCHAR(20) NOT NULL,
+                o_area VARCHAR(20) NOT NULL,
+                o_city VARCHAR(20) NOT NULL,
                 phone_number VARCHAR(10) NOT NULL,
                 status VARCHAR(20) DEFAULT 'Not Delivered',
                 FOREIGN KEY (donate_id) REFERENCES donate(id)
@@ -117,12 +136,12 @@ def create_feedback_table(connection):
         st.error(f"Error creating feedback table: {e}")
 
 # Function to simulate user signup and store in the login table
-def signup(name, email, password, connection):
+def signup(fname,lname, email, password, connection):
     try:
         cursor = connection.cursor()
         cursor.execute("""
-            INSERT INTO login (name, email, password) VALUES (%s, %s, %s)
-        """, (name, email, password))
+            INSERT INTO login (fname, lname, email, password) VALUES (%s, %s, %s, %s)
+        """, (fname, lname, email, password))
         connection.commit()
         st.success("Account created successfully! Please log in.")
         st.balloons()
@@ -181,31 +200,44 @@ def reset_password(connection):
 
 # Donate Page
 def donate_page(connection):
-    st.title(":green[You are stepping towards a good cause]")
-    st.title(":rainbow[Donate Food]")
+    st.title(":orange[You are stepping towards a good cause]")
+    #st.title(":blue[Donate Food]")
     st.write("Please fill out the form below to donate food.")
     
+    col1,col2 = st.columns(2)
     # Form inputs with validation
-    name = st.text_input("Name:")
+    with col1:
+        fname = st.text_input("First name:")
+        door_no = st.text_input("Door number/House name:")
+        street = st.text_input("Street:")
+    with col2:
+        lname = st.text_input("Last name:")
+        area = st.text_input("Area:")
+        city = st.text_input("City:")
     food_type = st.selectbox("Food Type:", ["Veg", "Non Veg"])
     food_name=st.text_input("Food name:")
-    quantity = st.number_input("Quantity of Food:", min_value=1, step=1)
-    address = st.text_input("Address:")
+    quantity = st.number_input("Quantity of Food (sufficient for the number of people):", min_value=1, step=1)
     phone_number = st.text_input("Phone Number:")
     
     if st.button("Submit Donation"):
         # Form validation
-        if not is_alpha(name):
-            st.error("Please enter a valid name with only alphabetic characters.")
+        if not validate_alpha(fname):
+            st.error("Please enter a valid First name with only alphabetic characters.")
             return
-        if not is_alpha(food_name):
+        if not validate_alpha(lname):
+            st.error("Please enter a valid Last name with only alphabetic characters.")
+            return
+        if not validate_alpha(food_name):
+            st.error("Please enter a valid food name with only alphabetic characters.")
+            return
+        if not validate_alpha(area):
+            st.error("Please enter a valid Area with only alphabetic characters.")
+            return
+        if not validate_alpha(city):
             st.error("Please enter a valid food name with only alphabetic characters.")
             return
         if not is_positive_integer(quantity):
             st.error("Please enter a valid quantity.")
-            return
-        if not is_alpha(address):
-            st.error("Please enter a valid address.")
             return
         if not is_valid_phone_number(phone_number):
             st.error("Please enter a valid phone number.")
@@ -215,11 +247,12 @@ def donate_page(connection):
         try:
             cursor = connection.cursor()
             cursor.execute("""
-                INSERT INTO donate (name, food_type,food_name, quantity, address, phone_number) 
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """, (name, food_type,food_name, quantity, address, phone_number))
+                INSERT INTO donate (fname, lname, food_type,food_name, quantity, door_no, street, area, city, phone_number) 
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (fname, lname, food_type,food_name, quantity, door_no, street, area, city, phone_number))
             connection.commit()
             st.success("Donation submitted successfully!")
+            st.snow()
         except Error as e:
             st.error(f"Error submitting donation: {e}")
 
@@ -232,7 +265,7 @@ def order_page(connection):
     try:
         cursor = connection.cursor()
         cursor.execute("""
-            SELECT id, name, food_type, quantity, address, phone_number FROM donate
+            SELECT id, food_type,food_name, quantity, CONCAT_WS(' , ',area,city) AS Address, phone_number FROM donate
         """)
         donate_data = cursor.fetchall()
         df=pd.DataFrame(donate_data,columns=cursor.column_names)
@@ -242,15 +275,27 @@ def order_page(connection):
 
     # Display table of available food items
     st.table(df)
-
+    
+    col1,col2=st.columns(2)
     # Form to place an order
-    selected_id = st.text_input("Enter Donate ID:")
-    order_quantity = st.number_input("Enter Quantity:", min_value=1, step=1)
-    delivery_address = st.text_input("Enter Delivery Address:")
+    with col1:
+        selected_id = st.text_input("Enter Donate ID:")
+        order_door_no = st.text_input("Enter Door number/House name:")
+        order_area = st.text_input("Enter Area:")
+    with col2:
+        order_quantity = st.number_input("Enter Quantity:", min_value=1, step=1)
+        order_street = st.text_input("Enter Street:")
+        order_city = st.text_input("Enter City:")
     phone_number = st.text_input("Enter Phone Number:")
 
     if st.button("Place Order"):
         # Form validation
+        if not validate_alpha(order_area):
+            st.error("Please enter a valid Area with only alphabetic characters.")
+            return
+        if not validate_alpha(order_city):
+            st.error("Please enter a valid City with only alphabetic characters.")
+            return
         if not is_positive_integer(order_quantity):
             st.error("Please enter a valid order quantity.")
             return
@@ -268,9 +313,9 @@ def order_page(connection):
             if order_quantity <= available_quantity:
                 # Store order details in the orders table
                 cursor.execute("""
-                    INSERT INTO orders (donate_id, quantity, delivery_address, phone_number) 
-                    VALUES (%s, %s, %s, %s)
-                """, (selected_id, order_quantity, delivery_address, phone_number))
+                    INSERT INTO orders (donate_id, quantity, o_door_no, o_street, o_area, o_city, phone_number) 
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """, (selected_id, order_quantity,order_door_no, order_street, order_area, order_city , phone_number))
                 connection.commit()
                 
                 # Update donate table with new available quantity
@@ -295,8 +340,8 @@ def delivery_page(connection):
     try:
         cursor = connection.cursor()
         cursor.execute("""
-            SELECT o.id AS order_id, d.name AS donor_name, d.address AS donor_address, 
-                   o.delivery_address AS recipient_address, o.status as delivery_status
+            SELECT o.id AS order_id, CONCAT_WS(' , ',d.door_no,d.street,d.area,d.city) AS Donor_address,d.phone_number AS Donor_phone,
+                   CONCAT_WS(' , ',o.o_door_no,o.o_street,o.o_area,o.o_city) AS Recipient_address, o.phone_number AS Recipient_phone, o.status as Delivery_status
             FROM orders o
             INNER JOIN donate d ON o.donate_id = d.id
         """)
@@ -344,6 +389,54 @@ def delivery_page(connection):
         except Error as e:
             st.error(f"Error updating delivery status: {e}")
 
+# Recipt generating page
+def generate_receipt(connection):
+    st.title("Generate your receipt here")
+    st.subheader("Please enter your delivery ID to generate your Delivery receipt")
+
+    number = st.text_input("Delivery id:")
+    if st.button("Generate"):
+        #if not is_positive_integer(number):
+        #    st.error("Please enter a valid delivery id.")
+        #    return
+        try:
+            cursor = connection.cursor()
+            cursor.execute("""
+                SELECT fname, lname, food_name, food_type, quantity,door_no,street,area,city FROM donate WHERE id = %s
+            """, (number,))
+            receipt_data = cursor.fetchone()
+            cursor.execute("""
+                SELECT o_door_no,o_street,o_area,o_city,id FROM orders WHERE  donate_id= %s
+            """, (number,))
+            order_data = cursor.fetchone()
+            if receipt_data:
+                o_door_no,o_street,o_area,o_city,id= order_data
+                o_address = o_door_no+" , "+o_street+" , "+o_area+" , "+o_city
+                fname, lname, food_name, food_type, quantity ,door_no,street,area,city= receipt_data
+                address = door_no+" , "+street+" , "+area+" , "+city
+                # HTML code for the receipt with custom styling
+                receipt_html = f"""
+                <div style="background-color: #f2f2f2;color:black; border: 2px solid #333; padding: 20px;">
+                    <h2 style="text-align: center; color: #333;">Delivery Receipt</h2>
+                    <p><strong>Delivery id:</strong> {id}</p>
+                    <p><strong>Donar Name:</strong> {fname} {lname}</p>
+                    <p><strong>Food Type:</strong> {food_type}</p>
+                    <p><strong>Food Name:</strong> {food_name}</p>
+                    <p><strong>Quantity:</strong> {quantity}</p>
+                    <p><strong>Donar Address:</strong> {address}</p>
+                    <p><strong>Recipient Address:</strong> {o_address}</p>
+                </div>
+                """
+
+                # Display the receipt using the st.markdown function
+                st.markdown(receipt_html, unsafe_allow_html=True)
+            else:
+                st.error("No donation record found for the provided phone number.")
+                
+        except Error as e:
+            st.error(f"Error generating the receipt: {e}")
+
+
 # Feedback Page
 def feedback_page(connection):
     st.title("Feedback")
@@ -371,12 +464,13 @@ def feedback_page(connection):
         except Error as e:
             st.error(f"Error submitting feedback: {e}")
 
+
 # Login Page
 def login_page(connection):
     st.title("Login")
 
-    email = st.text_input("Email:")
-    password = st.text_input("Password:", type="password")
+    email = st.text_input("Enter the email:")
+    password = st.text_input("Enter the Password:", type="password")
 
     if st.button("Login"):
         if login(email, password, connection):
@@ -386,14 +480,18 @@ def login_page(connection):
 def signup_page(connection):
     st.title("Sign Up")
 
-    name = st.text_input("Name:")
+    fname = st.text_input("First name:")
+    lname = st.text_input("Last name:")
     email = st.text_input("Email:")
     password = st.text_input("Password:", type="password")
 
     if st.button("Sign Up"):
         # Form validation for signup fields
-        if not is_alpha(name):
-            st.error("Please enter a valid name with only alphabetic characters.")
+        if not is_alpha(fname):
+            st.error("Please enter a valid First name with only alphabetic characters.")
+            return
+        if not validate_alpha(lname):
+            st.error("Please enter a valid Last name with only alphabetic characters and spaces.")
             return
         if not is_valid_email(email):
             st.error("Please enter a valid email address.")
@@ -403,7 +501,7 @@ def signup_page(connection):
             return
 
         # Call signup function to simulate user signup
-        signup(name, email, password, connection)
+        signup(fname,lname, email, password, connection)
 
 def logout():
     st.session_state.logged_in = False
@@ -411,11 +509,19 @@ def logout():
 
 def front_page():
     st.title("Welcome to :violet[Annamrutha] Food Management System")
-    #st.title(":green[FEED THE HUNGER]")
+    #st.title(":orange[FEED THE HUNGER]")
     st.header(":green[Let's pitch in and help out by giving to hunger relief!!]")
+    st.write("\n")
+    st.write("\n")
+    st.image("img1.jpg",width= 600,caption="Children across India are facing a threat of undernourishment. Your donation helps us nourish millions of children with mid-day meals across thousands of schools all over India")
+    st.write("\n")
+    st.write("\n")
+    st.write("\n")
+    st.write("\n")
     #st.image("col1.jpg", width=520,)
-    st.image("col1.jpg",width= 600,caption="Children across India are facing a threat of undernourishment. Your donation helps us nourish millions of children with mid-day meals across thousands of schools all over India")
     st.image("col2.webp",width=600,caption="The COVID-19 pandemic has left our senior citizens without any basic support. Your generous donations can contribute to keep them safe.")
+    st.write("\n")
+    st.write("\n")
     st.image("col3.jpg",width=600,caption="The COVID-19 pandemic has left thousands of people without access to food and at an imminent risk of hunger and infection. Your donations can help us provide food relief to the ones in need")
     st.header(":violet[Please login to donate food....]")
 
@@ -437,8 +543,8 @@ def main():
 
         # Check if the user is logged in, if not, show the login/signup pages
         if "logged_in" not in st.session_state or not st.session_state.logged_in:
-            st.sidebar.title(':rainbow[Annamrutha]')
-            pages = ["Home","Login","Sign Up"]
+            st.sidebar.title(':violet[Annamrutha]')
+            pages = ["Home","Login","Sign Up","Reset Password"]
             if st.session_state.reset_password:
                 pages.append("Reset Password")
             selection = st.sidebar.radio("Go to", pages)
@@ -453,8 +559,8 @@ def main():
 
         else:
             # If the user is logged in, show the multipage app
-            st.sidebar.title(':rainbow[Annamrutha]')
-            pages = [ "Donate", "Order", "Delivery", "Feedback", "Logout"]
+            st.sidebar.title(':violet[Annamrutha]')
+            pages = [ "Donate", "Order", "Delivery","Generate recipt", "Feedback", "Logout"]
             selection = st.sidebar.radio("Go to", pages)
             if selection == "Donate":
                 donate_page(connection)
@@ -462,6 +568,8 @@ def main():
                 order_page(connection)
             elif selection == "Delivery":
                 delivery_page(connection)
+            elif selection == "Generate recipt":
+                generate_receipt(connection)
             elif selection == "Feedback":
                 feedback_page(connection)
             elif selection == "Logout":
