@@ -37,11 +37,7 @@ def is_positive_integer(value):
 def is_valid_password(s):
     # For simplicity, just checking if the password is at least 6 characters long
     return len(s) >= 6
-
-# Function to generate a unique ID (integer within 5 digits)
-def generate_unique_id():
-    return random.randint(10000, 99999)
-
+ 
 # Function to create a MySQL connection
 def create_connection():
     try:
@@ -125,8 +121,7 @@ def create_feedback_table(connection):
         cursor = connection.cursor()
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS feedback (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                name VARCHAR(255) NOT NULL,
+                email VARCHAR(255) PRIMARY KEY,
                 rating INT NOT NULL,
                 experience TEXT NOT NULL
             )
@@ -442,13 +437,13 @@ def feedback_page(connection):
     st.title("Feedback")
     st.write("Please provide your feedback below.")
 
-    name = st.text_input("Name:")
+    email = st.text_input("Email:")
     rating = st.slider("Rating (1-10):", min_value=1, max_value=10)
     experience = st.text_area("Your Experience:")
 
     if st.button("Submit Feedback"):
         # Form validation
-        if not is_alpha(name):
+        if not is_valid_email(email):
             st.error("Please enter a valid name with only alphabetic characters.")
             return
 
@@ -456,9 +451,9 @@ def feedback_page(connection):
         try:
             cursor = connection.cursor()
             cursor.execute("""
-                INSERT INTO feedback (name, rating, experience) 
+                INSERT INTO feedback (email, rating, experience) 
                 VALUES (%s, %s, %s)
-            """, (name, rating, experience))
+            """, (email, rating, experience))
             connection.commit()
             st.success("Feedback submitted successfully!")
         except Error as e:
