@@ -2,18 +2,14 @@ import streamlit as st
 import mysql.connector
 from mysql.connector import Error
 import pandas as pd
-import re
 
 def validate_alpha(input_str):
-    # Regular expression pattern to match only alphabets and spaces
-    pattern = r'^[a-zA-Z\s]+$'
-    
-    # Use re.match() to check if the input matches the pattern
-    if re.match(pattern, input_str):
-        return True
-    else:
-        return False
-    
+    # Loop through each character in the input string
+    for char in input_str:
+        # Check if the character is not an alphabet and not a space
+        if not (char.isalpha() or char.isspace()):
+            return False
+    return True
 
 # Function to check if a string contains only alphabetic characters
 def is_alpha(s):
