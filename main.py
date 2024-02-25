@@ -393,17 +393,17 @@ def generate_receipt(connection):
         try:
             cursor = connection.cursor()
             cursor.execute("""
-                SELECT fname, lname, food_name, food_type, quantity,door_no,street,area,city FROM donate WHERE id = %s
+                SELECT fname, lname, food_name, food_type,door_no,street,area,city FROM donate WHERE id = %s
             """, (number,))
             receipt_data = cursor.fetchone()
             cursor.execute("""
-                SELECT o_door_no,o_street,o_area,o_city,id FROM orders WHERE  donate_id= %s
+                SELECT o_door_no,o_street,o_area,o_city,id, quantity FROM orders WHERE  donate_id= %s
             """, (number,))
             order_data = cursor.fetchone()
             if receipt_data:
-                o_door_no,o_street,o_area,o_city,id= order_data
+                o_door_no,o_street,o_area,o_city,id, quantity= order_data
                 o_address = o_door_no+" , "+o_street+" , "+o_area+" , "+o_city
-                fname, lname, food_name, food_type, quantity ,door_no,street,area,city= receipt_data
+                fname, lname, food_name, food_type, door_no,street,area,city= receipt_data
                 address = door_no+" , "+street+" , "+area+" , "+city
                 # HTML code for the receipt with custom styling
                 receipt_html = f"""
