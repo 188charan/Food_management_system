@@ -502,10 +502,46 @@ def logout():
     st.session_state.logged_in = False
     st.session_state.user_data = {}
 
-def front_page():
+def front_page(connection):
     st.title("Welcome to :violet[Annamrutha] Food Management System")
     #st.title(":orange[FEED THE HUNGER]")
     st.header(":green[Let's pitch in and help out by giving to hunger relief!!]")
+    col1,col2,col3=st.columns(3)
+    try:
+            cursor = connection.cursor()
+            cursor.execute("""
+                SELECT COUNT(*) FROM donate
+            """,)
+            x = cursor.fetchone()
+            x=list(x)
+            donations=x[0]
+
+            cursor.execute("""
+                SELECT COUNT(*) FROM orders
+            """,)
+            y = cursor.fetchone()
+            y=list(y)
+            orders=y[0]
+
+            cursor.execute("""
+                SELECT COUNT(*) FROM login
+            """,)
+            z = cursor.fetchone()
+            z=list(z)
+            customers=z[0]+x[0]+y[0]
+            
+    except Error as e:
+            st.error(f"Error updating delivery status: {e}")
+
+    with col1:
+        st.markdown(f"<h1 style='display: inline;color: violet;'>{donations}+</h1> ", unsafe_allow_html=True) 
+        st.subheader(":violet[Donations recieved]")
+    with col2:
+        st.markdown(f"<h1 style='display: inline;color: violet;'>{orders}+</h1> ", unsafe_allow_html=True) 
+        st.subheader(":violet[Orders placed]")
+    with col3:
+        st.markdown(f"<h1 style='display: inline;color: violet;'>{customers}+</h1> ", unsafe_allow_html=True) 
+        st.subheader(":violet[Happy customers]")
     st.write("\n")
     st.write("\n")
     st.image("img1.jpg",width= 600,caption="Children across India are facing a threat of undernourishment. Your donation helps us nourish millions of children with mid-day meals across thousands of schools all over India")
@@ -544,7 +580,7 @@ def main():
                 pages.append("Reset Password")
             selection = st.sidebar.radio("Go to", pages)
             if selection == "Home":
-                front_page()
+                front_page(connection)
             if selection == "Login":
                 login_page(connection)
             elif selection == "Sign Up":
