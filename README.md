@@ -1,2 +1,3 @@
-# Food_management_system🍽️
+# Annamrutha🍽️
+The food management system
 DBMS lab project
