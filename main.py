@@ -607,7 +607,7 @@ def main():
                 logout()
                 st.success("Logged out successfully. Redirecting to login page...")
                 st.session_state.logged_in = False
-                front_page()
+                front_page(connection)
 
 if __name__ == "__main__":
     main()
